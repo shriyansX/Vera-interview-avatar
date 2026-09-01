@@ -22,12 +22,11 @@ function Avatar({ state = 'idle' }) {
 
       {/* Core circle */}
       <div
-        className={`relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 transition-smooth ${
-          state === 'idle' ? 'border-ink-700 bg-ink-800' :
-          state === 'speaking' ? 'border-amber bg-ink-800' :
-          state === 'listening' ? 'border-pass bg-ink-800' :
-          'border-ink-700 bg-ink-800'
-        }`}
+        className={`relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 transition-smooth ${state === 'idle' ? 'border-ink-700 bg-ink-800' :
+            state === 'speaking' ? 'border-amber bg-ink-800' :
+              state === 'listening' ? 'border-pass bg-ink-800' :
+                'border-ink-700 bg-ink-800'
+          }`}
         style={state === 'idle' ? { animation: 'avatar-idle 3s ease-in-out infinite' } : undefined}
       >
         {/* Face — SVG */}
@@ -103,9 +102,8 @@ function ProgressBar({ current, total }) {
         {Array.from({ length: total }, (_, i) => (
           <span
             key={i}
-            className={`w-2 h-2 rounded-full transition-smooth ${
-              i < current ? 'bg-amber' : 'bg-ink-700'
-            }`}
+            className={`w-2 h-2 rounded-full transition-smooth ${i < current ? 'bg-amber' : 'bg-ink-700'
+              }`}
           />
         ))}
       </div>
@@ -122,18 +120,16 @@ function ScoreChip({ score, index, label }) {
   const isWeak = score <= 2;
   return (
     <div
-      className={`animate-score-chip inline-flex flex-col items-center gap-1 px-3 py-2 rounded-lg border ${
-        isStrong ? 'border-pass bg-pass/10' :
-        isWeak ? 'border-fail bg-fail/10' :
-        'border-ink-700 bg-ink-800'
-      }`}
+      className={`animate-score-chip inline-flex flex-col items-center gap-1 px-3 py-2 rounded-lg border ${isStrong ? 'border-pass bg-pass/10' :
+          isWeak ? 'border-fail bg-fail/10' :
+            'border-ink-700 bg-ink-800'
+        }`}
       style={{ animationDelay: `${index * 0.1}s` }}
       aria-label={`${label}: ${score} out of 5${isStrong ? ', strong' : isWeak ? ', needs improvement' : ''}`}
     >
       <span className="text-xs text-muted font-sans">{label}</span>
-      <span className={`text-lg font-serif font-bold ${
-        isStrong ? 'text-pass' : isWeak ? 'text-fail' : 'text-cream'
-      }`}>
+      <span className={`text-lg font-serif font-bold ${isStrong ? 'text-pass' : isWeak ? 'text-fail' : 'text-cream'
+        }`}>
         {score}<span className="text-sm font-normal text-muted">/5</span>
       </span>
       {isStrong && <span className="text-[10px] text-pass font-medium uppercase tracking-wider">Strong</span>}
@@ -187,11 +183,10 @@ function SetupScreen({ onStart }) {
                 key={t.id}
                 id={`track-${t.id}`}
                 onClick={() => setTrack(t.id)}
-                className={`text-left px-4 py-3 rounded-lg border transition-smooth font-sans ${
-                  track === t.id
+                className={`text-left px-4 py-3 rounded-lg border transition-smooth font-sans ${track === t.id
                     ? 'border-amber bg-amber/10 text-cream'
                     : 'border-ink-700 bg-ink-800 text-cream hover:border-ink-700 hover:bg-ink-800/80'
-                }`}
+                  }`}
                 aria-pressed={track === t.id}
               >
                 <span className="font-medium text-sm">{t.label}</span>
@@ -210,11 +205,10 @@ function SetupScreen({ onStart }) {
                 key={d.id}
                 id={`difficulty-${d.id}`}
                 onClick={() => setDifficulty(d.id)}
-                className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-medium transition-smooth font-sans ${
-                  difficulty === d.id
+                className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-medium transition-smooth font-sans ${difficulty === d.id
                     ? 'border-amber bg-amber/10 text-cream'
                     : 'border-ink-700 bg-ink-800 text-cream hover:border-ink-700'
-                }`}
+                  }`}
                 aria-pressed={difficulty === d.id}
               >
                 {d.label}
@@ -228,11 +222,10 @@ function SetupScreen({ onStart }) {
           id="start-interview"
           disabled={!track || !difficulty}
           onClick={() => onStart(track, difficulty)}
-          className={`w-full py-3.5 rounded-lg font-sans font-semibold text-base transition-smooth ${
-            track && difficulty
+          className={`w-full py-3.5 rounded-lg font-sans font-semibold text-base transition-smooth ${track && difficulty
               ? 'bg-amber text-ink-900 hover:bg-amber-dark active:scale-[0.98]'
               : 'bg-ink-700 text-muted cursor-not-allowed'
-          }`}
+            }`}
         >
           Start mock interview
         </button>
@@ -327,14 +320,15 @@ function InterviewScreen({ track, difficulty, onComplete }) {
           speak(data.question);
         }, delay);
 
-        // Add model turn to history
-        const modelTurn = JSON.stringify({
-          feedback: data.feedback,
-          score: data.score,
-          question: data.question,
-        });
+        // Add model turn to history — plain text, not a raw JSON blob,
+        // so Gemini reads it as a natural conversation turn
+        const modelTurn = data.feedback
+          ? `${data.feedback} Next question: ${data.question}`
+          : data.question;
         setHistory([...newHistory, { role: 'model', text: modelTurn }]);
       } else {
+        console.error('Unexpected response from Vera:', data);
+        setError('Vera lost track of the interview. Please try again.');
         setLoading(false);
         setAvatarState('idle');
       }
@@ -451,9 +445,8 @@ function InterviewScreen({ track, difficulty, onComplete }) {
           <div className="bg-ink-800 border border-ink-700 rounded-lg p-4 mb-4 animate-fade-up">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-muted uppercase tracking-wider font-sans font-medium">Previous answer</span>
-              <span className={`text-sm font-bold font-serif ${
-                feedbackScore >= 4 ? 'text-pass' : feedbackScore <= 2 ? 'text-fail' : 'text-cream'
-              }`} aria-label={`Score: ${feedbackScore} out of 5`}>
+              <span className={`text-sm font-bold font-serif ${feedbackScore >= 4 ? 'text-pass' : feedbackScore <= 2 ? 'text-fail' : 'text-cream'
+                }`} aria-label={`Score: ${feedbackScore} out of 5`}>
                 {feedbackScore}/5
               </span>
             </div>
@@ -494,17 +487,16 @@ function InterviewScreen({ track, difficulty, onComplete }) {
                 <button
                   id="mic-toggle"
                   onClick={toggleListening}
-                  className={`absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-smooth ${
-                    isListening
+                  className={`absolute right-3 bottom-3 w-8 h-8 rounded-full flex items-center justify-center transition-smooth ${isListening
                       ? 'bg-pass text-ink-900'
                       : 'bg-ink-700 text-muted hover:text-cream'
-                  }`}
+                    }`}
                   aria-label={isListening ? 'Stop listening' : 'Start voice input'}
                   aria-pressed={isListening}
                 >
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/>
-                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z" />
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                   </svg>
                 </button>
               )}
@@ -514,11 +506,10 @@ function InterviewScreen({ track, difficulty, onComplete }) {
               id="submit-answer"
               onClick={submitAnswer}
               disabled={!answer.trim() || loading}
-              className={`w-full mt-3 py-3 rounded-lg font-sans font-semibold text-sm transition-smooth ${
-                answer.trim() && !loading
+              className={`w-full mt-3 py-3 rounded-lg font-sans font-semibold text-sm transition-smooth ${answer.trim() && !loading
                   ? 'bg-amber text-ink-900 hover:bg-amber-dark active:scale-[0.98]'
                   : 'bg-ink-700 text-muted cursor-not-allowed'
-              }`}
+                }`}
             >
               Submit answer
             </button>
@@ -582,9 +573,8 @@ function SummaryScreen({ scores, summary, lastFeedback, lastScore, onRestart }) 
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-muted uppercase tracking-wider font-sans font-medium">Last answer</span>
               {lastScore != null && (
-                <span className={`text-sm font-bold font-serif ${
-                  lastScore >= 4 ? 'text-pass' : lastScore <= 2 ? 'text-fail' : 'text-cream'
-                }`}>
+                <span className={`text-sm font-bold font-serif ${lastScore >= 4 ? 'text-pass' : lastScore <= 2 ? 'text-fail' : 'text-cream'
+                  }`}>
                   {lastScore}/5
                 </span>
               )}
