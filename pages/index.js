@@ -253,6 +253,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
   const [avatarState, setAvatarState] = useState('thinking');
   const [isListening, setIsListening] = useState(false);
   const [scores, setScores] = useState([]);
+  const scoresRef = useRef([]);
   const [showFeedback, setShowFeedback] = useState(false);
 
   const recognitionRef = useRef(null);
@@ -292,14 +293,16 @@ function InterviewScreen({ track, difficulty, onComplete }) {
       if (data.feedback && data.score != null) {
         setFeedback(data.feedback);
         setFeedbackScore(data.score);
-        setScores(prev => [...prev, data.score]);
+        const updatedScores = [...scoresRef.current, data.score];
+        scoresRef.current = updatedScores;
+        setScores(updatedScores);
         setShowFeedback(true);
       }
 
       if (data.done) {
         // Interview complete
         onComplete({
-          scores: [...scores, data.score].filter(s => s != null),
+          scores: scoresRef.current.filter(s => s != null),
           summary: data.summary,
           feedback: data.feedback,
           lastScore: data.score,
@@ -337,12 +340,14 @@ function InterviewScreen({ track, difficulty, onComplete }) {
       setLoading(false);
       setAvatarState('idle');
     }
-  }, [track, difficulty, scores, speak, onComplete]);
+  }, [track, difficulty, speak, onComplete]);
 
   // Initialize — ask first question
   useEffect(() => {
-    callAPI([]);
+    let cancelled = false;
+    if (!cancelled) callAPI([]);
     return () => {
+      cancelled = true;
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -476,7 +481,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
                 id="answer-input"
                 value={answer}
                 onChange={e => setAnswer(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) submitAnswer(); }}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitAnswer(); }}
                 placeholder="Type your answer here…"
                 rows={4}
                 className="w-full bg-ink-800 border border-ink-700 rounded-lg px-4 py-3 text-cream placeholder-muted/50 font-sans text-sm resize-none focus:border-amber focus:outline-none transition-smooth"
