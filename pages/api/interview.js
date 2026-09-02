@@ -78,8 +78,15 @@ export default async function handler(req, res) {
       },
     });
 
-    // Build Gemini conversation history from our flat history array
-    const contents = [];
+    // Build Gemini conversation history from our flat history array.
+    // Gemini requires the conversation to always start with a user turn,
+    // so we always prepend the initial "start" message.
+    const startMessage = {
+      role: 'user',
+      parts: [{ text: 'Start the mock interview. Ask me the first question.' }],
+    };
+
+    const contents = [startMessage];
     if (history && Array.isArray(history)) {
       for (const turn of history) {
         contents.push({
@@ -87,15 +94,6 @@ export default async function handler(req, res) {
           parts: [{ text: turn.text }],
         });
       }
-    }
-
-    // The "current" message: if history is empty, send a start prompt;
-    // otherwise the last user message is already in history.
-    if (contents.length === 0) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: 'Start the mock interview. Ask me the first question.' }],
-      });
     }
 
     const result = await model.generateContent({ contents });
