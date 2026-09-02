@@ -12,6 +12,12 @@ const RESPONSE_SCHEMA = {
   required: ['done'],
 };
 
+// Fallback models — each has its own 20 req/day free tier quota
+const FALLBACK_MODELS = [
+  'gemini-1.5-flash',
+  'gemini-2.0-flash',
+];
+
 function buildSystemInstruction(track, difficulty) {
   const trackDescriptions = {
     sde: 'SDE / Full-Stack — DSA, problem-solving, light system design',
@@ -47,6 +53,16 @@ RULES:
 8. Keep questions realistic — the kind asked in actual Indian campus placement drives.`;
 }
 
+function isRateLimitOrUnavailable(err) {
+  const msg = err?.message || '';
+  return err?.status === 429 ||
+    msg.includes('429') ||
+    msg.includes('Too Many Requests') ||
+    msg.includes('quota') ||
+    msg.includes('404') ||
+    msg.includes('not found') ||
+    msg.includes('no longer available');
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -60,77 +76,91 @@ export default async function handler(req, res) {
     });
   }
 
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-
   const { track, difficulty, history } = req.body || {};
   if (!track || !difficulty) {
     return res.status(400).json({ error: 'Missing required fields: track, difficulty.' });
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: buildSystemInstruction(track, difficulty),
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.7,
-      },
-    });
+  // Build conversation contents (shared across model attempts)
+  const startMessage = {
+    role: 'user',
+    parts: [{ text: 'Start the mock interview. Ask me the first question.' }],
+  };
 
-    // Build Gemini conversation history from our flat history array.
-    // Gemini requires the conversation to always start with a user turn,
-    // so we always prepend the initial "start" message.
-    const startMessage = {
-      role: 'user',
-      parts: [{ text: 'Start the mock interview. Ask me the first question.' }],
-    };
-
-    const contents = [startMessage];
-    if (history && Array.isArray(history)) {
-      for (const turn of history) {
-        contents.push({
-          role: turn.role === 'model' ? 'model' : 'user',
-          parts: [{ text: turn.text }],
-        });
-      }
-    }
-
-    const result = await model.generateContent({ contents });
-    const text = result.response.text();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      return res.status(500).json({ error: 'Failed to parse model response as JSON.', raw: text });
-    }
-
-    // Include the raw model text so the frontend can store the exact model
-    // output in conversation history — keeps it consistent with JSON mode.
-    parsed._rawModelText = text;
-
-    return res.status(200).json(parsed);
-  } catch (err) {
-    console.error('Gemini API error:', err);
-
-    // Friendly message for rate limits
-    const is429 = err?.status === 429 ||
-      err?.message?.includes('429') ||
-      err?.message?.includes('quota');
-
-    if (is429) {
-      return res.status(429).json({
-        error: 'Vera is taking a short breather (API rate limit). Please wait about a minute and try again.',
-        detail: err.message || String(err),
-        retryable: true,
+  const contents = [startMessage];
+  if (history && Array.isArray(history)) {
+    for (const turn of history) {
+      contents.push({
+        role: turn.role === 'model' ? 'model' : 'user',
+        parts: [{ text: turn.text }],
       });
     }
+  }
 
-    return res.status(500).json({
-      error: 'Something went wrong calling the AI. Please try again.',
-      detail: err.message || String(err),
+  // Use env var model first, then fallbacks
+  const envModel = process.env.GEMINI_MODEL;
+  const modelsToTry = envModel
+    ? [envModel, ...FALLBACK_MODELS.filter(m => m !== envModel)]
+    : FALLBACK_MODELS;
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Trying model: ${modelName}`);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: buildSystemInstruction(track, difficulty),
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.7,
+        },
+      });
+
+      const result = await model.generateContent({ contents });
+      const text = result.response.text();
+
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        return res.status(500).json({ error: 'Failed to parse model response as JSON.', raw: text });
+      }
+
+      // Include the raw model text so the frontend can store the exact model
+      // output in conversation history — keeps it consistent with JSON mode.
+      parsed._rawModelText = text;
+
+      return res.status(200).json(parsed);
+    } catch (err) {
+      lastError = err;
+      console.log(`Model ${modelName} failed: ${err.message}`);
+
+      // If it's a rate limit or model not available, try the next model
+      if (isRateLimitOrUnavailable(err)) {
+        continue;
+      }
+      // For other errors, don't try fallbacks
+      break;
+    }
+  }
+
+  // All models failed
+  console.error('All models failed. Last error:', lastError);
+
+  const is429 = isRateLimitOrUnavailable(lastError);
+  if (is429) {
+    return res.status(429).json({
+      error: 'Vera is taking a short breather (API rate limit). Please wait about a minute and try again.',
+      detail: lastError?.message || String(lastError),
+      retryable: true,
     });
   }
+
+  return res.status(500).json({
+    error: 'Something went wrong calling the AI. Please try again.',
+    detail: lastError?.message || String(lastError),
+  });
 }

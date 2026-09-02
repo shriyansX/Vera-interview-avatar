@@ -255,6 +255,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
   const [scores, setScores] = useState([]);
   const scoresRef = useRef([]);
   const [showFeedback, setShowFeedback] = useState(false);
+  const retryCountRef = useRef(0);
 
   const recognitionRef = useRef(null);
   const textareaRef = useRef(null);
@@ -288,13 +289,21 @@ function InterviewScreen({ track, difficulty, onComplete }) {
 
       const data = await res.json();
 
-      // Auto-retry on rate limit — wait and try again silently
+      // Retry only once. Infinite retries can keep the UI stuck forever when
+      // the account quota is exhausted rather than temporarily throttled.
       if (res.status === 429 || data.retryable) {
-        setError('Vera is catching her breath… retrying in a moment.');
-        await new Promise(r => setTimeout(r, 20000)); // wait 20s
-        setError('');
-        return callAPI(newHistory); // retry
+        if (retryCountRef.current < 1) {
+          retryCountRef.current += 1;
+          const retryAfter = Math.min(Math.max(Number(res.headers.get('Retry-After')) || 30, 5), 60);
+          setError(`The AI is rate-limited. Retrying once in ${retryAfter} seconds…`);
+          await new Promise(r => setTimeout(r, retryAfter * 1000));
+          setError('');
+          return callAPI(newHistory);
+        }
+        throw new Error(data.error || 'The AI API quota has been reached. Please try again later.');
       }
+
+      retryCountRef.current = 0;
 
       if (!res.ok) throw new Error(data.detail || data.error || 'API request failed');
 
@@ -342,6 +351,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
         setAvatarState('idle');
       }
     } catch (err) {
+      retryCountRef.current = 0;
       setError(err.message);
       setLoading(false);
       setAvatarState('idle');
