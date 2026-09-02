@@ -46,7 +46,7 @@ Open [http://localhost:3000](http://localhost:3000).
 2. **Import to Vercel** — go to [vercel.com/new](https://vercel.com/new), import the GitHub repo. Vercel auto-detects Next.js.
 3. **Set environment variable** — in the Vercel dashboard, go to *Settings → Environment Variables* and add:
    - `GEMINI_API_KEY` = your Google Gemini API key
-   - (Optional) `GEMINI_MODEL` = override the default model (`gemini-2.5-flash`)
+   - (Optional) `GEMINI_MODEL` = override the default model (`gemini-3.6-flash`)
 4. **Deploy** — click Deploy. That's it.
 5. **Enable Vercel Analytics** — in the Vercel dashboard, go to *Analytics* tab and enable it. The `@vercel/analytics` package is already wired into the app.
 
@@ -64,7 +64,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes | — | Your Google Gemini API key |
-| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Override the Gemini model name |
+| `GEMINI_MODEL` | No | `gemini-3.6-flash` | Override the Gemini model name |
 
 ## License
 

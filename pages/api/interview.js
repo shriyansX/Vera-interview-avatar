@@ -15,8 +15,7 @@ const RESPONSE_SCHEMA = {
 // Keep fallbacks limited to currently supported model IDs. An unavailable
 // model must not be reported as a rate-limit problem.
 const FALLBACK_MODELS = [
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
+  'gemini-3.6-flash',
 ];
 
 function buildSystemInstruction(track, difficulty) {
