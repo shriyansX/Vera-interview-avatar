@@ -287,6 +287,15 @@ function InterviewScreen({ track, difficulty, onComplete }) {
       });
 
       const data = await res.json();
+
+      // Auto-retry on rate limit — wait and try again silently
+      if (res.status === 429 || data.retryable) {
+        setError('Vera is catching her breath… retrying in a moment.');
+        await new Promise(r => setTimeout(r, 20000)); // wait 20s
+        setError('');
+        return callAPI(newHistory); // retry
+      }
+
       if (!res.ok) throw new Error(data.detail || data.error || 'API request failed');
 
       // Process feedback from the previous answer

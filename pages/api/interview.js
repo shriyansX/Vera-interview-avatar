@@ -47,6 +47,30 @@ RULES:
 8. Keep questions realistic — the kind asked in actual Indian campus placement drives.`;
 }
 
+// Retry helper: waits and retries on 429 rate-limit errors
+async function generateWithRetry(model, contents, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.generateContent({ contents });
+    } catch (err) {
+      const is429 = err?.status === 429 ||
+        err?.message?.includes('429') ||
+        err?.message?.includes('Too Many Requests') ||
+        err?.message?.includes('quota');
+
+      if (is429 && attempt < maxRetries) {
+        // Parse retry delay from error message, default to 15s
+        const delayMatch = err.message?.match(/retry in ([\d.]+)s/i);
+        const waitSec = delayMatch ? Math.min(parseFloat(delayMatch[1]), 60) : 15;
+        console.log(`Rate limited. Waiting ${waitSec}s before retry ${attempt + 1}/${maxRetries}...`);
+        await new Promise(r => setTimeout(r, waitSec * 1000));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
@@ -96,7 +120,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const result = await model.generateContent({ contents });
+    const result = await generateWithRetry(model, contents);
     const text = result.response.text();
 
     let parsed;
@@ -113,6 +137,20 @@ export default async function handler(req, res) {
     return res.status(200).json(parsed);
   } catch (err) {
     console.error('Gemini API error:', err);
+
+    // Friendly message for rate limits
+    const is429 = err?.status === 429 ||
+      err?.message?.includes('429') ||
+      err?.message?.includes('quota');
+
+    if (is429) {
+      return res.status(429).json({
+        error: 'Vera is taking a short breather (API rate limit). Please wait about a minute and try again.',
+        detail: err.message || String(err),
+        retryable: true,
+      });
+    }
+
     return res.status(500).json({
       error: 'Something went wrong calling the AI. Please try again.',
       detail: err.message || String(err),
