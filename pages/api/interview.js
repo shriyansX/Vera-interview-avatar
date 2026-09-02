@@ -83,7 +83,7 @@ export default async function handler(req, res) {
     });
   }
 
-  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
   const { track, difficulty, history } = req.body || {};
   if (!track || !difficulty) {
