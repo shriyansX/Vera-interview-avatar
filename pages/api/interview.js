@@ -17,7 +17,6 @@ const RESPONSE_SCHEMA = {
 const FALLBACK_MODELS = [
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
-  'gemini-2.0-flash',
 ];
 
 function buildSystemInstruction(track, difficulty) {
@@ -107,6 +106,7 @@ export default async function handler(req, res) {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   let lastError = null;
+  let sawRateLimit = false;
 
   for (const modelName of modelsToTry) {
     try {
@@ -138,6 +138,9 @@ export default async function handler(req, res) {
       return res.status(200).json(parsed);
     } catch (err) {
       lastError = err;
+      if (err?.status === 429 || err?.message?.includes('429') || err?.message?.toLowerCase().includes('quota')) {
+        sawRateLimit = true;
+      }
       console.log(`Model ${modelName} failed: ${err.message}`);
 
       // If it's a rate limit or model not available, try the next model
@@ -152,7 +155,7 @@ export default async function handler(req, res) {
   // All models failed
   console.error('All models failed. Last error:', lastError);
 
-  const isRateLimited = lastError?.status === 429 ||
+  const isRateLimited = sawRateLimit || lastError?.status === 429 ||
     lastError?.message?.includes('429') ||
     lastError?.message?.toLowerCase().includes('quota');
   const isUnavailable = lastError?.message?.includes('404') ||
