@@ -22,7 +22,7 @@ function Avatar({ state = 'idle' }) {
 
       {/* Core circle */}
       <div
-        className={`relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 transition-smooth ${state === 'idle' ? 'border-ink-700 bg-ink-800' :
+        className={`avatar-core relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 transition-smooth ${state === 'idle' ? 'border-ink-700 bg-ink-800' :
             state === 'speaking' ? 'border-amber bg-ink-800' :
               state === 'listening' ? 'border-pass bg-ink-800' :
                 'border-ink-700 bg-ink-800'
@@ -159,14 +159,15 @@ function SetupScreen({ onStart }) {
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg animate-fade-up">
+    <div className="app-shell min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="glass-panel w-full max-w-lg animate-fade-up p-5 sm:p-8">
         {/* Hero */}
         <div className="text-center mb-10">
           <div className="mb-6">
             <Avatar state="idle" />
           </div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-cream mb-3 tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
+          <span className="eyebrow">Your personal interview coach</span>
+          <h1 className="font-serif text-4xl sm:text-5xl font-bold text-cream mt-3 mb-3 tracking-tight" style={{ fontFamily: 'Fraunces, Georgia, serif' }}>
             Vera
           </h1>
           <p className="text-muted text-base sm:text-lg max-w-md mx-auto leading-relaxed">
@@ -183,9 +184,9 @@ function SetupScreen({ onStart }) {
                 key={t.id}
                 id={`track-${t.id}`}
                 onClick={() => setTrack(t.id)}
-                className={`text-left px-4 py-3 rounded-lg border transition-smooth font-sans ${track === t.id
+                className={`selection-card text-left px-4 py-3 rounded-xl border transition-smooth font-sans ${track === t.id
                     ? 'border-amber bg-amber/10 text-cream'
-                    : 'border-ink-700 bg-ink-800 text-cream hover:border-ink-700 hover:bg-ink-800/80'
+                    : 'border-ink-700 bg-ink-800/70 text-cream hover:border-amber/50 hover:bg-ink-800/90'
                   }`}
                 aria-pressed={track === t.id}
               >
@@ -205,7 +206,7 @@ function SetupScreen({ onStart }) {
                 key={d.id}
                 id={`difficulty-${d.id}`}
                 onClick={() => setDifficulty(d.id)}
-                className={`flex-1 px-4 py-2.5 rounded-lg border text-sm font-medium transition-smooth font-sans ${difficulty === d.id
+                className={`selection-card flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium transition-smooth font-sans ${difficulty === d.id
                     ? 'border-amber bg-amber/10 text-cream'
                     : 'border-ink-700 bg-ink-800 text-cream hover:border-ink-700'
                   }`}
@@ -222,7 +223,7 @@ function SetupScreen({ onStart }) {
           id="start-interview"
           disabled={!track || !difficulty}
           onClick={() => onStart(track, difficulty)}
-          className={`w-full py-3.5 rounded-lg font-sans font-semibold text-base transition-smooth ${track && difficulty
+          className={`button-primary w-full py-3.5 rounded-xl font-sans font-semibold text-base transition-smooth ${track && difficulty
               ? 'bg-amber text-ink-900 hover:bg-amber-dark active:scale-[0.98]'
               : 'bg-ink-700 text-muted cursor-not-allowed'
             }`}
@@ -438,7 +439,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
   }, [answer, loading, isListening, history, callAPI]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-8 sm:py-12">
+    <div className="app-shell min-h-screen flex flex-col items-center px-4 py-8 sm:py-12">
       <div className="w-full max-w-lg">
         {/* Progress */}
         <div className="flex justify-center mb-6">
@@ -451,7 +452,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
         </div>
 
         {/* Question card */}
-        <div className="bg-ink-800 border border-ink-700 rounded-lg p-5 mb-4 min-h-[80px] transition-smooth">
+        <div className="question-card bg-ink-800 border border-ink-700 rounded-2xl p-5 mb-4 min-h-[112px] transition-smooth">
           {loading && !currentQuestion ? (
             <p className="text-muted text-sm font-sans italic">Vera is preparing your first question…</p>
           ) : (
@@ -463,7 +464,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
 
         {/* Feedback on previous answer */}
         {showFeedback && feedback && (
-          <div className="bg-ink-800 border border-ink-700 rounded-lg p-4 mb-4 animate-fade-up">
+          <div className="feedback-card bg-ink-800 border border-ink-700 rounded-2xl p-4 mb-4 animate-fade-up">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-muted uppercase tracking-wider font-sans font-medium">Previous answer</span>
               <span className={`text-sm font-bold font-serif ${feedbackScore >= 4 ? 'text-pass' : feedbackScore <= 2 ? 'text-fail' : 'text-cream'
@@ -500,7 +501,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
                 onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitAnswer(); }}
                 placeholder="Type your answer here…"
                 rows={4}
-                className="w-full bg-ink-800 border border-ink-700 rounded-lg px-4 py-3 text-cream placeholder-muted/50 font-sans text-sm resize-none focus:border-amber focus:outline-none transition-smooth"
+                className="answer-input w-full bg-ink-800 border border-ink-700 rounded-2xl px-4 py-3 text-cream placeholder-muted/50 font-sans text-sm resize-none focus:border-amber focus:outline-none transition-smooth"
                 aria-label="Your answer"
               />
               {/* Mic button */}
@@ -527,7 +528,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
               id="submit-answer"
               onClick={submitAnswer}
               disabled={!answer.trim() || loading}
-              className={`w-full mt-3 py-3 rounded-lg font-sans font-semibold text-sm transition-smooth ${answer.trim() && !loading
+              className={`button-primary w-full mt-3 py-3 rounded-xl font-sans font-semibold text-sm transition-smooth ${answer.trim() && !loading
                   ? 'bg-amber text-ink-900 hover:bg-amber-dark active:scale-[0.98]'
                   : 'bg-ink-700 text-muted cursor-not-allowed'
                 }`}
@@ -569,8 +570,8 @@ function SummaryScreen({ scores, summary, lastFeedback, lastScore, onRestart }) 
     : '—';
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg animate-fade-up">
+    <div className="app-shell min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="glass-panel w-full max-w-lg animate-fade-up p-5 sm:p-8">
         {/* Average score */}
         <div className="text-center mb-8">
           <Avatar state="idle" />
@@ -616,7 +617,7 @@ function SummaryScreen({ scores, summary, lastFeedback, lastScore, onRestart }) 
         <button
           id="restart-session"
           onClick={onRestart}
-          className="w-full py-3.5 rounded-lg font-sans font-semibold text-base bg-amber text-ink-900 hover:bg-amber-dark active:scale-[0.98] transition-smooth"
+          className="button-primary w-full py-3.5 rounded-xl font-sans font-semibold text-base bg-amber text-ink-900 hover:bg-amber-dark active:scale-[0.98] transition-smooth"
         >
           Run another session
         </button>
