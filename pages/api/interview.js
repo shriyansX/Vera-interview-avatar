@@ -106,6 +106,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to parse model response as JSON.', raw: text });
     }
 
+    // Include the raw model text so the frontend can store the exact model
+    // output in conversation history — keeps it consistent with JSON mode.
+    parsed._rawModelText = text;
+
     return res.status(200).json(parsed);
   } catch (err) {
     console.error('Gemini API error:', err);

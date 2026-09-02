@@ -287,7 +287,7 @@ function InterviewScreen({ track, difficulty, onComplete }) {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'API request failed');
+      if (!res.ok) throw new Error(data.detail || data.error || 'API request failed');
 
       // Process feedback from the previous answer
       if (data.feedback && data.score != null) {
@@ -323,12 +323,9 @@ function InterviewScreen({ track, difficulty, onComplete }) {
           speak(data.question);
         }, delay);
 
-        // Add model turn to history — plain text, not a raw JSON blob,
-        // so Gemini reads it as a natural conversation turn
-        const modelTurn = data.feedback
-          ? `${data.feedback} Next question: ${data.question}`
-          : data.question;
-        setHistory([...newHistory, { role: 'model', text: modelTurn }]);
+        // Store the raw model JSON text in history so Gemini's JSON mode
+        // sees consistent model turns on subsequent calls.
+        setHistory([...newHistory, { role: 'model', text: data._rawModelText }]);
       } else {
         console.error('Unexpected response from Vera:', data);
         setError('Vera lost track of the interview. Please try again.');
