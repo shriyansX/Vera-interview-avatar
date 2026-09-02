@@ -14,8 +14,9 @@ const RESPONSE_SCHEMA = {
 
 // Fallback models — each has its own 20 req/day free tier quota
 const FALLBACK_MODELS = [
-  'gemini-1.5-flash',
+  'gemini-3.6-flash',
   'gemini-2.0-flash',
+  'gemini-1.5-flash',
 ];
 
 function buildSystemInstruction(track, difficulty) {
