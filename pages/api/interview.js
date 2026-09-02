@@ -12,11 +12,11 @@ const RESPONSE_SCHEMA = {
   required: ['done'],
 };
 
-// Fallback models — each has its own 20 req/day free tier quota
+// Keep fallbacks limited to currently supported model IDs. An unavailable
+// model must not be reported as a rate-limit problem.
 const FALLBACK_MODELS = [
-  'gemini-3.6-flash',
+  'gemini-2.5-flash',
   'gemini-2.0-flash',
-  'gemini-1.5-flash',
 ];
 
 function buildSystemInstruction(track, difficulty) {
@@ -151,12 +151,22 @@ export default async function handler(req, res) {
   // All models failed
   console.error('All models failed. Last error:', lastError);
 
-  const is429 = isRateLimitOrUnavailable(lastError);
-  if (is429) {
+  const isRateLimited = lastError?.status === 429 ||
+    lastError?.message?.includes('429') ||
+    lastError?.message?.toLowerCase().includes('quota');
+  const isUnavailable = lastError?.message?.includes('404') ||
+    lastError?.message?.toLowerCase().includes('not found');
+  if (isRateLimited) {
+    res.setHeader('Retry-After', '60');
     return res.status(429).json({
-      error: 'Vera is taking a short breather (API rate limit). Please wait about a minute and try again.',
-      detail: lastError?.message || String(lastError),
+      error: 'The Gemini API quota has been reached. Please wait a minute and try again.',
       retryable: true,
+    });
+  }
+
+  if (isUnavailable) {
+    return res.status(503).json({
+      error: 'The configured Gemini model is unavailable. Set GEMINI_MODEL to a supported model in Vercel.',
     });
   }
 
