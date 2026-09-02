@@ -138,6 +138,98 @@ function ScoreChip({ score, index, label }) {
   );
 }
 
+function FeedbackForm({ sessionScore }) {
+  const [rating, setRating] = useState(0);
+  const [useAgain, setUseAgain] = useState('');
+  const [comment, setComment] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+
+  const submitFeedback = async (event) => {
+    event.preventDefault();
+    if (!rating || !useAgain || status === 'sending') return;
+
+    setStatus('sending');
+    setError('');
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, useAgain, comment: comment.trim(), sessionScore }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not send feedback.');
+      setStatus('sent');
+    } catch (err) {
+      setError(err.message);
+      setStatus('idle');
+    }
+  };
+
+  if (status === 'sent') {
+    return (
+      <div className="feedback-form rounded-2xl border border-pass/30 bg-pass/10 p-5 text-center animate-fade-up">
+        <p className="text-pass font-medium">Thank you — your feedback helps make Vera better.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submitFeedback} className="feedback-form rounded-2xl border border-ink-700 p-5 mb-4 animate-fade-up" style={{ animationDelay: '0.55s' }}>
+      <p className="text-cream font-serif text-lg font-bold">How did Vera feel?</p>
+      <p className="text-muted text-sm mt-1 mb-4">Your honest feedback helps improve the interview experience.</p>
+
+      <div className="mb-4">
+        <p className="text-xs text-muted uppercase tracking-wider font-medium mb-2">Rate the session</p>
+        <div className="flex gap-1" role="radiogroup" aria-label="Rate this interview session from one to five">
+          {[1, 2, 3, 4, 5].map(value => (
+            <button
+              type="button"
+              key={value}
+              onClick={() => setRating(value)}
+              className={`rating-star ${value <= rating ? 'is-selected' : ''}`}
+              aria-label={`${value} out of 5`}
+              aria-pressed={value === rating}
+            >★</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <p className="text-xs text-muted uppercase tracking-wider font-medium mb-2">Would you use Vera again?</p>
+        <div className="flex gap-2">
+          {['Yes', 'Maybe', 'No'].map(option => (
+            <button
+              type="button"
+              key={option}
+              onClick={() => setUseAgain(option.toLowerCase())}
+              className={`selection-card flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-smooth ${useAgain === option.toLowerCase() ? 'border-amber bg-amber/10 text-cream' : 'border-ink-700 bg-ink-800/60 text-muted hover:border-amber/50'}`}
+              aria-pressed={useAgain === option.toLowerCase()}
+            >{option}</button>
+          ))}
+        </div>
+      </div>
+
+      <label className="block text-xs text-muted uppercase tracking-wider font-medium mb-2" htmlFor="feedback-comment">What should Vera improve? <span className="normal-case tracking-normal">(optional)</span></label>
+      <textarea
+        id="feedback-comment"
+        value={comment}
+        onChange={event => setComment(event.target.value.slice(0, 500))}
+        rows={3}
+        maxLength={500}
+        placeholder="Tell us what felt useful, confusing, or missing…"
+        className="answer-input w-full rounded-xl border border-ink-700 bg-ink-800 px-3 py-2.5 text-sm text-cream placeholder-muted/50 focus:border-amber focus:outline-none transition-smooth resize-none"
+      />
+      {error && <p className="text-fail text-xs mt-2" role="alert">{error}</p>}
+      <button
+        type="submit"
+        disabled={!rating || !useAgain || status === 'sending'}
+        className={`button-primary mt-4 w-full rounded-xl py-2.5 text-sm font-semibold transition-smooth ${rating && useAgain ? 'bg-amber text-ink-900 hover:bg-amber-dark' : 'bg-ink-700 text-muted cursor-not-allowed'}`}
+      >{status === 'sending' ? 'Sending feedback…' : 'Send feedback'}</button>
+    </form>
+  );
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SETUP SCREEN
@@ -612,6 +704,8 @@ function SummaryScreen({ scores, summary, lastFeedback, lastScore, onRestart }) 
             <p className="text-cream text-sm font-sans leading-relaxed">{summary}</p>
           </div>
         )}
+
+        <FeedbackForm sessionScore={avg === '—' ? null : Number(avg)} />
 
         {/* Restart */}
         <button
