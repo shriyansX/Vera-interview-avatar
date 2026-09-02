@@ -16,6 +16,7 @@ const RESPONSE_SCHEMA = {
 // model must not be reported as a rate-limit problem.
 const FALLBACK_MODELS = [
   'gemini-3.6-flash',
+  'gemini-3.5-flash',
 ];
 
 function buildSystemInstruction(track, difficulty) {
@@ -54,14 +55,17 @@ RULES:
 }
 
 function isRateLimitOrUnavailable(err) {
-  const msg = err?.message || '';
+  const msg = (err?.message || '').toLowerCase();
   return err?.status === 429 ||
+    err?.status === 503 ||
     msg.includes('429') ||
-    msg.includes('Too Many Requests') ||
+    msg.includes('too many requests') ||
     msg.includes('quota') ||
     msg.includes('404') ||
     msg.includes('not found') ||
-    msg.includes('no longer available');
+    msg.includes('no longer available') ||
+    msg.includes('service unavailable') ||
+    msg.includes('high demand');
 }
 
 export default async function handler(req, res) {
@@ -106,6 +110,7 @@ export default async function handler(req, res) {
   const genAI = new GoogleGenerativeAI(apiKey);
   let lastError = null;
   let sawRateLimit = false;
+  let sawTemporaryUnavailable = false;
 
   for (const modelName of modelsToTry) {
     try {
@@ -140,6 +145,9 @@ export default async function handler(req, res) {
       if (err?.status === 429 || err?.message?.includes('429') || err?.message?.toLowerCase().includes('quota')) {
         sawRateLimit = true;
       }
+      if (err?.status === 503 || err?.message?.toLowerCase().includes('service unavailable') || err?.message?.toLowerCase().includes('high demand')) {
+        sawTemporaryUnavailable = true;
+      }
       console.log(`Model ${modelName} failed: ${err.message}`);
 
       // If it's a rate limit or model not available, try the next model
@@ -163,6 +171,14 @@ export default async function handler(req, res) {
     res.setHeader('Retry-After', '60');
     return res.status(429).json({
       error: 'The Gemini API quota has been reached. Please wait a minute and try again.',
+      retryable: true,
+    });
+  }
+
+  if (sawTemporaryUnavailable) {
+    res.setHeader('Retry-After', '20');
+    return res.status(503).json({
+      error: 'Vera is experiencing unusually high demand. Retrying shortly…',
       retryable: true,
     });
   }
