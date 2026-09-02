@@ -171,6 +171,7 @@ export default async function handler(req, res) {
   if (isUnavailable) {
     return res.status(503).json({
       error: 'The configured Gemini model is unavailable. Set GEMINI_MODEL to a supported model in Vercel.',
+      detail: `Tried: ${modelsToTry.join(', ')}. Gemini: ${lastError?.message || 'model not found'}`,
     });
   }
 
